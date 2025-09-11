@@ -33,7 +33,7 @@ function Signup() {
       if(isValid == true) signup(formData);
   }
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="min-h-screen grid ">
 
       {/* left-side */}
       <div className="flex flex-col justify-center items-center p-6 sm:p-12">
@@ -151,10 +151,10 @@ function Signup() {
 
       {/* right size */}
                     
-      <AuthImagePattern
+      {/* <AuthImagePattern
         title="Join our community"
         subtitle="Connect with friends, share moments, and stay in touch with your loved ones."
-      />
+      /> */}
 
     </div>
   );
