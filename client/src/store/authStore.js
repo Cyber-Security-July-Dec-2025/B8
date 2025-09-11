@@ -1,16 +1,17 @@
 import { create } from 'zustand';
-import {axoiosInstance} from '../lib/axios.js'
+import { axoiosInstance } from '../lib/axios.js';
 import { toast } from 'react-hot-toast';
 import { io } from "socket.io-client";
 import { generatePGPKeys, decryptPrivateKey } from "../lib/pgp.js";
+import { downloadKeysFile, readKeysFile } from "../lib/fileStore.js";
 
 const BASE_URL = "http://localhost:5001";
 
 export const useAuthStore = create((set, get) => ({
     authUser: null,
     privateKey: null, 
-    encryptedPrivateKey: localStorage.getItem("encryptedPrivateKey") || null,
-    passphrase: localStorage.getItem("pgpPassphrase") || null,
+    encryptedPrivateKey: null,
+    passphrase: null,
     isCheckingAuth: true,
     isSigningUp: false,
     isLoggingIn: false,
@@ -20,11 +21,7 @@ export const useAuthStore = create((set, get) => ({
     signup: async (formData) => {
         set({ isSigningUp: true });
         try {
-            let passphrase = localStorage.getItem("pgpPassphrase");
-            if (!passphrase) {
-                passphrase = crypto.randomUUID();
-                localStorage.setItem("pgpPassphrase", passphrase);
-            }
+            const passphrase = crypto.randomUUID();
 
             const { privateKey: encryptedPrivateKey, publicKey } = await generatePGPKeys(
                 formData.fullname,
@@ -32,13 +29,14 @@ export const useAuthStore = create((set, get) => ({
                 passphrase
             );
 
-            localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
+            // Download keys as file instead of storing in localStorage
+            downloadKeysFile(formData.email, encryptedPrivateKey, passphrase);
 
             const payload = { ...formData, publicKey };
             const res = await axoiosInstance.post("/auth/signup", payload);
 
-            set({ authUser: res.data, encryptedPrivateKey, passphrase });
-            toast.success("Signup successful");
+            set({ authUser: null});
+            toast.success("Signup successful – your keys file was downloaded!");
         } catch (error) {
             toast.error(error.response?.data?.message || "Signup failed");
         } finally {
@@ -46,26 +44,30 @@ export const useAuthStore = create((set, get) => ({
         }
     },
 
-    login: async (formData) => {
+    login: async (formData, file) => {
         set({ isLoggingIn: true });
         try {
             const { email, password } = formData;
-
             const res = await axoiosInstance.post("/auth/login", { email, password });
 
-            const encryptedPrivateKey = localStorage.getItem("encryptedPrivateKey");
-            const passphrase = localStorage.getItem("pgpPassphrase");
-
-            if (!encryptedPrivateKey || !passphrase) {
-                throw new Error("Missing private key or passphrase in local storage");
+            if (!file) {
+                throw new Error("Please upload your PGP key file");
             }
+
+            // Parse uploaded JSON
+            const { encryptedPrivateKey, passphrase } = await readKeysFile(file);
+
+            // Save temporarily in localStorage for session
+            localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
+            localStorage.setItem("pgpPassphrase", passphrase);
+
             const decryptedKey = await decryptPrivateKey(encryptedPrivateKey, passphrase);
 
             set({
                 authUser: { ...res.data },
-                privateKey: decryptedKey, 
+                privateKey: decryptedKey,
                 encryptedPrivateKey,
-                passphrase
+                passphrase,
             });
 
             toast.success("Login successful");
@@ -80,6 +82,10 @@ export const useAuthStore = create((set, get) => ({
     logout: async () => {
         try {
             await axoiosInstance.post("/auth/logout");
+            // Clear keys from localStorage on logout
+            localStorage.removeItem("encryptedPrivateKey");
+            localStorage.removeItem("pgpPassphrase");
+
             set({ authUser: null, privateKey: null });
             get().disconnectSocket();
             toast.success("Logout successful");

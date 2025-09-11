@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useAuthStore } from "../../store/authStore.js";
-import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare, File } from "lucide-react";
 import { Link } from "react-router-dom";
-import AuthImagePattern from "../AuthImagePattern.jsx";
 import { toast } from "react-hot-toast";
 
 function Login() {
@@ -10,7 +9,7 @@ function Login() {
     email: "",
     password: "",
   });
-
+  const [file, setFile] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const { isLoggingIn, login } = useAuthStore();
 
@@ -21,26 +20,29 @@ function Login() {
     if (!formData.password) return toast.error("Password is required");
     if (formData.password.length < 6)
       return toast.error("Password must be at least 6 characters");
+    if (!file) return toast.error("PGP key file is required");
     return true;
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
     const isValid = handleFormValidate();
-    if (isValid) login(formData); // privateKey auto-handled in authStore
+    if (isValid) login(formData, file); // pass file to store
   };
 
   return (
     <div>
-      <div className="min-h-screen grid ">
+      <div className="min-h-screen grid">
         {/* left-side */}
         <div className="flex flex-col justify-center items-center p-6 sm:p-12">
           <div className="w-full max-w-md space-y-8">
             {/* Logo */}
             <div className="text-center mb-8">
               <div className="flex flex-col items-center gap-2 group">
-                <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center 
-                  group-hover:bg-primary/20 transition-colors">
+                <div
+                  className="size-12 rounded-xl bg-primary/10 flex items-center justify-center 
+                  group-hover:bg-primary/20 transition-colors"
+                >
                   <MessageSquare className="size-6 text-primary" />
                 </div>
                 <h1 className="text-2xl font-bold mt-2">Welcome Back</h1>
@@ -50,7 +52,7 @@ function Login() {
           </div>
 
           {/* form */}
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6 w-full max-w-md">
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-medium">Email</span>
@@ -104,6 +106,21 @@ function Login() {
               </div>
             </div>
 
+            {/* File input for JSON key */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium">PGP Key File</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".json"
+                  className="file-input file-input-bordered w-full"
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+              </div>
+            </div>
+
             <button type="submit" className="btn btn-primary w-full">
               {isLoggingIn ? (
                 <>
@@ -116,7 +133,7 @@ function Login() {
             </button>
           </form>
 
-          <div className="text-center">
+          <div className="text-center mt-4">
             <p className="text-base-content/60">
               Don’t have an account?{" "}
               <Link to="/signup" className="link link-primary">
@@ -125,12 +142,6 @@ function Login() {
             </p>
           </div>
         </div>
-
-        {/* right side */}
-        {/* <AuthImagePattern
-          title="Join our community"
-          subtitle="Connect with friends, share moments, and stay in touch with your loved ones."
-        /> */}
       </div>
     </div>
   );
