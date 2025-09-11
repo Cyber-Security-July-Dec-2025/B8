@@ -223,8 +223,8 @@ The hybrid encryption model combines the performance of symmetric encryption (AE
 
 1. **Clone the repository**
 ```bash
-git clone `https://github.com/shubh5921/chatter`
-cd chatter/api
+git clone `https://github.com/Cyber-Security-July-Dec-2025/B8`
+cd B8/api
 ```
 
 2. **Install dependencies**
